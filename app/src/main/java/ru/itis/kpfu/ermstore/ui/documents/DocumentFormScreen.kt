@@ -29,10 +29,15 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ru.itis.kpfu.ermstore.domain.model.DocumentType
+import ru.itis.kpfu.ermstore.domain.model.StorageLocation
 import ru.itis.kpfu.ermstore.ui.components.ScreenScaffold
 import ru.itis.kpfu.ermstore.ui.components.SelectionField
 import ru.itis.kpfu.ermstore.ui.util.documentTypeLabel
 import ru.itis.kpfu.ermstore.ui.util.formatQuantity
+import ru.itis.kpfu.ermstore.ui.util.locationDisplayName
+import ru.itis.kpfu.ermstore.ui.util.operationLocations
+import ru.itis.kpfu.ermstore.ui.util.saleLocations
+import ru.itis.kpfu.ermstore.ui.util.saleProducts
 
 @Composable
 fun DocumentFormScreen(
@@ -63,7 +68,17 @@ fun DocumentFormScreen(
 			verticalArrangement = Arrangement.spacedBy(12.dp)
 		) {
 			item {
-				LocationPicker(state = state, onSelect = viewModel::selectLocation)
+				val productIds = state.lines.map { it.productId }.toSet()
+				val locations = if (state.type == DocumentType.SALE) {
+					saleLocations(state.locations, state.stock, productIds)
+				} else {
+					operationLocations(state.locations)
+				}
+				LocationPicker(
+					state = state,
+					locations = locations,
+					onSelect = viewModel::selectLocation
+				)
 			}
 
 			when (state.type) {
@@ -97,16 +112,28 @@ fun DocumentFormScreen(
 
 				DocumentType.PURCHASE, DocumentType.SALE -> {
 					item {
-						val availableProducts = state.products.filter { product ->
+						val products = if (state.type == DocumentType.SALE) {
+							saleProducts(state.products, state.stock, state.selectedLocationId)
+						} else {
+							state.products
+						}
+						val availableProducts = products.filter { product ->
 							state.lines.none { it.productId == product.id }
 						}
-						if (state.products.isEmpty()) {
-							Text(
+						when {
+							state.products.isEmpty() -> Text(
 								text = "Сначала добавьте товары в разделе «Товары».",
 								color = MaterialTheme.colorScheme.onSurfaceVariant
 							)
-						} else {
-							SelectionField(
+							availableProducts.isEmpty() -> Text(
+								text = if (state.type == DocumentType.SALE && state.selectedLocationId != null) {
+									"На выбранном складе нет доступных товаров."
+								} else {
+									"Все доступные товары уже добавлены."
+								},
+								color = MaterialTheme.colorScheme.onSurfaceVariant
+							)
+							else -> SelectionField(
 								label = "Добавить товар",
 								selectedText = null,
 								options = availableProducts.map { it.id to it.name },
@@ -148,20 +175,19 @@ fun DocumentFormScreen(
 }
 
 @Composable
-private fun LocationPicker(state: DocumentFormUiState, onSelect: (Long) -> Unit) {
+private fun LocationPicker(
+	state: DocumentFormUiState,
+	locations: List<StorageLocation>,
+	onSelect: (Long) -> Unit
+) {
 	val names = state.locations.associate { it.id to it.name }
-	val options = state.locations.map { location ->
-		val label = if (location.parentId == null) {
-			location.name
-		} else {
-			"${names[location.parentId] ?: "Склад"} / ${location.name}"
-		}
-		location.id to label
+	val options = locations.map { location ->
+		location.id to locationDisplayName(location, names)
 	}
 	Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
 		Text("Место хранения", style = MaterialTheme.typography.titleMedium)
 		SelectionField(
-			label = "Выберите склад или подсклад",
+			label = "Выберите подсклад",
 			selectedText = options.firstOrNull { it.first == state.selectedLocationId }?.second,
 			options = options,
 			onSelected = onSelect
@@ -169,6 +195,16 @@ private fun LocationPicker(state: DocumentFormUiState, onSelect: (Long) -> Unit)
 		if (state.locations.isEmpty()) {
 			Text(
 				text = "Складов пока нет. Создайте их в разделе «Склады».",
+				style = MaterialTheme.typography.bodySmall,
+				color = MaterialTheme.colorScheme.onSurfaceVariant
+			)
+		} else if (locations.isEmpty()) {
+			Text(
+				text = if (state.type == DocumentType.SALE && state.lines.isNotEmpty()) {
+					"Нет подсклада с остатком по всем выбранным товарам."
+				} else {
+					"Нет доступных подскладов."
+				},
 				style = MaterialTheme.typography.bodySmall,
 				color = MaterialTheme.colorScheme.onSurfaceVariant
 			)

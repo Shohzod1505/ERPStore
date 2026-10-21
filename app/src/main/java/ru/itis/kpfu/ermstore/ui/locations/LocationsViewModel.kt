@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import ru.itis.kpfu.ermstore.domain.usecase.CreateLocationUseCase
 import ru.itis.kpfu.ermstore.domain.usecase.ObserveLocationStockUseCase
 import ru.itis.kpfu.ermstore.domain.usecase.ObserveLocationsUseCase
+import ru.itis.kpfu.ermstore.ui.util.orderedLocations
 import javax.inject.Inject
 
 data class LocationStockLineUi(
@@ -47,36 +48,41 @@ class LocationsViewModel @Inject constructor(
 	) { locations, stock ->
 		val byLocation = stock.groupBy { it.locationId }
 		val names = locations.associate { it.id to it.name }
-		val warehouses = locations.filter { it.parentId == null }.sortedBy { it.name }
-		val warehouseIds = warehouses.map { it.id }.toSet()
 		val childrenByParent = locations
 			.filter { it.parentId != null }
 			.groupBy { it.parentId }
-		val orderedLocations = buildList {
-			warehouses.forEach { warehouse ->
-				add(warehouse)
-				addAll(childrenByParent[warehouse.id].orEmpty().sortedBy { it.name })
-			}
-			addAll(
-				locations
-					.filter { it.parentId != null && it.parentId !in warehouseIds }
-					.sortedBy { it.name }
-			)
-		}
-		val rows = orderedLocations
+		val rows = orderedLocations(locations)
 			.map { location ->
-				LocationRowUi(
-					id = location.id,
-					name = location.name,
-					parentId = location.parentId,
-					parentName = location.parentId?.let { names[it] },
-					stockLines = byLocation[location.id].orEmpty().map { line ->
+				val stockLines = if (location.parentId == null) {
+					childrenByParent[location.id]
+						.orEmpty()
+						.flatMap { child -> byLocation[child.id].orEmpty() }
+						.groupBy { it.productId }
+						.values
+						.map { productRows ->
+							val first = productRows.first()
+							LocationStockLineUi(
+								productName = first.productName,
+								units = productRows.sumOf { it.units },
+								unitsPerBlock = first.unitsPerBlock
+							)
+						}
+						.sortedBy { it.productName }
+				} else {
+					byLocation[location.id].orEmpty().map { line ->
 						LocationStockLineUi(
 							productName = line.productName,
 							units = line.units,
 							unitsPerBlock = line.unitsPerBlock
 						)
 					}
+				}
+				LocationRowUi(
+					id = location.id,
+					name = location.name,
+					parentId = location.parentId,
+					parentName = location.parentId?.let { names[it] },
+					stockLines = stockLines
 				)
 			}
 		LocationsUiState(

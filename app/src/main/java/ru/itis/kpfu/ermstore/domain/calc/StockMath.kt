@@ -10,4 +10,7 @@ object StockMath {
 		require(unitsPerBlock > 0) { "Units per block must be positive" }
 		return units % unitsPerBlock
 	}
+
+	fun inventoryBeforeUnits(countedUnits: Long, deltaUnits: Long): Long =
+		countedUnits - deltaUnits
 }

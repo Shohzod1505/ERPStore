@@ -1,6 +1,7 @@
 package ru.itis.kpfu.ermstore.domain.usecase
 
 import kotlinx.coroutines.flow.Flow
+import ru.itis.kpfu.ermstore.domain.model.CashOperationResult
 import ru.itis.kpfu.ermstore.domain.model.CashOperationType
 import ru.itis.kpfu.ermstore.domain.model.CashTransaction
 import ru.itis.kpfu.ermstore.domain.repository.CashRepository
@@ -25,5 +26,5 @@ class AddCashOperationUseCase @Inject constructor(
 		type: CashOperationType,
 		amountKopecks: Long,
 		comment: String?
-	) = repository.addManual(type, amountKopecks, comment)
+	): CashOperationResult = repository.addManual(type, amountKopecks, comment)
 }

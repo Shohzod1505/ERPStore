@@ -1,7 +1,10 @@
 package ru.itis.kpfu.ermstore.domain.calc
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import ru.itis.kpfu.ermstore.domain.model.CashFilter
 import ru.itis.kpfu.ermstore.domain.model.CashOperationType
 
 class CalculationTest {
@@ -45,6 +48,28 @@ class CalculationTest {
 		assertEquals(-500, CashMath.signedAmount(CashOperationType.EXPENSE, 500))
 		assertEquals(-500, CashMath.signedAmount(CashOperationType.DEBT_GIVEN, 500))
 		assertEquals(500, CashMath.signedAmount(CashOperationType.DEBT_RECEIVED, 500))
+		assertEquals(500, CashMath.signedAmount(CashOperationType.DEBT_REPAID_TO_US, 500))
+		assertEquals(-500, CashMath.signedAmount(CashOperationType.DEBT_REPAID_BY_US, 500))
+	}
+
+	@Test
+	fun `cash filters separate ordinary operations from debts`() {
+		assertTrue(CashFilter.ALL.matches(CashOperationType.INCOME))
+		assertTrue(CashFilter.INCOME.matches(CashOperationType.INCOME))
+		assertFalse(CashFilter.INCOME.matches(CashOperationType.DEBT_REPAID_TO_US))
+		assertTrue(CashFilter.EXPENSE.matches(CashOperationType.EXPENSE))
+		assertFalse(CashFilter.EXPENSE.matches(CashOperationType.DEBT_REPAID_BY_US))
+		assertTrue(CashFilter.DEBT.matches(CashOperationType.DEBT_GIVEN))
+		assertTrue(CashFilter.DEBT.matches(CashOperationType.DEBT_RECEIVED))
+		assertTrue(CashFilter.DEBT.matches(CashOperationType.DEBT_REPAID_TO_US))
+		assertTrue(CashFilter.DEBT.matches(CashOperationType.DEBT_REPAID_BY_US))
+	}
+
+	@Test
+	fun `cash spend limit allows exact balance`() {
+		assertTrue(CashMath.canSpend(500, 500))
+		assertTrue(CashMath.canSpend(500, 400))
+		assertFalse(CashMath.canSpend(500, 501))
 	}
 
 	@Test
@@ -53,6 +78,12 @@ class CalculationTest {
 		assertEquals(1, StockMath.remainderUnits(25, 12))
 		assertEquals(0, StockMath.blocks(0, 12))
 		assertEquals(0, StockMath.remainderUnits(0, 12))
+	}
+
+	@Test
+	fun `inventory before units restores previous count`() {
+		assertEquals(100, StockMath.inventoryBeforeUnits(120, 20))
+		assertEquals(120, StockMath.inventoryBeforeUnits(100, -20))
 	}
 
 	@Test

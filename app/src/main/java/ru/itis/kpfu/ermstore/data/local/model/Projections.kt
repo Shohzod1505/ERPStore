@@ -21,10 +21,23 @@ data class LocationStockRowDb(
 	val locationId: Long,
 	val locationName: String,
 	val parentId: Long?,
+	val parentName: String?,
 	val productId: Long,
 	val productName: String,
 	val unitsPerBlock: Int,
 	val units: Long
+)
+
+data class ProductMovementRowDb(
+	val id: Long,
+	val dateMillis: Long,
+	val quantityDelta: Long,
+	val unitCostKopecks: Long,
+	val documentId: Long,
+	val documentNumber: String,
+	val documentType: String,
+	val locationName: String,
+	val parentName: String?
 )
 
 data class SalesReportRowDb(

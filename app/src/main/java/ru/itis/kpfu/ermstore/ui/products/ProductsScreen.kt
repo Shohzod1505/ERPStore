@@ -1,5 +1,6 @@
 package ru.itis.kpfu.ermstore.ui.products
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ru.itis.kpfu.ermstore.ui.components.AddButton
@@ -35,7 +37,10 @@ import ru.itis.kpfu.ermstore.ui.components.ScreenScaffold
 import ru.itis.kpfu.ermstore.ui.util.formatQuantity
 
 @Composable
-fun ProductsScreen(viewModel: ProductsViewModel = hiltViewModel()) {
+fun ProductsScreen(
+	onOpen: (Long) -> Unit,
+	viewModel: ProductsViewModel = hiltViewModel()
+) {
 	val state by viewModel.state.collectAsState()
 	val snackbarHostState = remember { SnackbarHostState() }
 	var showAddDialog by remember { mutableStateOf(false) }
@@ -61,7 +66,7 @@ fun ProductsScreen(viewModel: ProductsViewModel = hiltViewModel()) {
 				verticalArrangement = Arrangement.spacedBy(8.dp)
 			) {
 				items(state.rows, key = { it.id }) { product ->
-					ProductCard(product)
+					ProductCard(product, onClick = { onOpen(product.id) })
 				}
 			}
 		}
@@ -79,10 +84,19 @@ fun ProductsScreen(viewModel: ProductsViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun ProductCard(product: ProductRowUi) {
-	Card(modifier = Modifier.fillMaxWidth()) {
+private fun ProductCard(product: ProductRowUi, onClick: () -> Unit) {
+	Card(
+		modifier = Modifier
+			.fillMaxWidth()
+			.clickable(onClick = onClick)
+	) {
 		Column(modifier = Modifier.padding(16.dp)) {
-			Text(product.name, style = MaterialTheme.typography.titleMedium)
+			Text(
+				text = product.name,
+				style = MaterialTheme.typography.titleMedium,
+				maxLines = 2,
+				overflow = TextOverflow.Ellipsis
+			)
 			Text(
 				text = formatQuantity(product.units, product.unitsPerBlock),
 				style = MaterialTheme.typography.bodyMedium,

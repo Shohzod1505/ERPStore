@@ -1,6 +1,7 @@
 package ru.itis.kpfu.ermstore.domain.repository
 
 import kotlinx.coroutines.flow.Flow
+import ru.itis.kpfu.ermstore.domain.model.CashOperationResult
 import ru.itis.kpfu.ermstore.domain.model.CashOperationType
 import ru.itis.kpfu.ermstore.domain.model.CashTransaction
 import ru.itis.kpfu.ermstore.domain.model.CreateDocumentInput
@@ -11,6 +12,7 @@ import ru.itis.kpfu.ermstore.domain.model.InventoryPrefillRow
 import ru.itis.kpfu.ermstore.domain.model.LocationStockRow
 import ru.itis.kpfu.ermstore.domain.model.PostingResult
 import ru.itis.kpfu.ermstore.domain.model.Product
+import ru.itis.kpfu.ermstore.domain.model.ProductDetail
 import ru.itis.kpfu.ermstore.domain.model.ProductStock
 import ru.itis.kpfu.ermstore.domain.model.ProfitAndLoss
 import ru.itis.kpfu.ermstore.domain.model.SalesReport
@@ -18,6 +20,7 @@ import ru.itis.kpfu.ermstore.domain.model.StorageLocation
 
 interface ProductRepository {
 	fun observeProducts(): Flow<List<Product>>
+	fun observeProductDetail(id: Long): Flow<ProductDetail?>
 	suspend fun getProduct(id: Long): Product?
 	suspend fun createProduct(name: String, unitsPerBlock: Int): Long
 }
@@ -39,7 +42,11 @@ interface DocumentRepository {
 interface CashRepository {
 	fun observeTransactions(): Flow<List<CashTransaction>>
 	fun observeBalance(): Flow<Long>
-	suspend fun addManual(type: CashOperationType, amountKopecks: Long, comment: String?)
+	suspend fun addManual(
+		type: CashOperationType,
+		amountKopecks: Long,
+		comment: String?
+	): CashOperationResult
 }
 
 interface ReportRepository {

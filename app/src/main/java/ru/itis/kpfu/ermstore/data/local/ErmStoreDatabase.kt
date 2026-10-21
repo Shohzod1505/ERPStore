@@ -25,7 +25,7 @@ import ru.itis.kpfu.ermstore.data.local.entity.StockMovementEntity
 		StockMovementEntity::class,
 		CashTransactionEntity::class
 	],
-	version = 1,
+	version = 2,
 	exportSchema = false
 )
 @TypeConverters(Converters::class)

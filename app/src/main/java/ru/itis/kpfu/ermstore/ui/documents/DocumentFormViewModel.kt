@@ -20,21 +20,24 @@ import ru.itis.kpfu.ermstore.domain.model.CreateDocumentInput
 import ru.itis.kpfu.ermstore.domain.model.DocumentType
 import ru.itis.kpfu.ermstore.domain.model.DraftLineInput
 import ru.itis.kpfu.ermstore.domain.model.InventoryPrefillRow
+import ru.itis.kpfu.ermstore.domain.model.LocationStockRow
 import ru.itis.kpfu.ermstore.domain.model.Product
 import ru.itis.kpfu.ermstore.domain.model.StorageLocation
 import ru.itis.kpfu.ermstore.domain.usecase.CreateDraftUseCase
 import ru.itis.kpfu.ermstore.domain.usecase.ObserveInventoryPrefillUseCase
+import ru.itis.kpfu.ermstore.domain.usecase.ObserveLocationStockUseCase
 import ru.itis.kpfu.ermstore.domain.usecase.ObserveLocationsUseCase
 import ru.itis.kpfu.ermstore.domain.usecase.ObserveProductsUseCase
 import ru.itis.kpfu.ermstore.ui.util.parseMoneyToKopecks
 import ru.itis.kpfu.ermstore.ui.util.parseUnits
+import ru.itis.kpfu.ermstore.ui.util.stockAtLocation
 import javax.inject.Inject
 
 data class PurchaseSaleLineUi(
 	val productId: Long,
 	val productName: String,
-	val quantity: String = "1",
-	val price: String = "0"
+	val quantity: String = "",
+	val price: String = ""
 )
 
 data class InventoryLineUi(
@@ -49,6 +52,7 @@ data class DocumentFormUiState(
 	val type: DocumentType = DocumentType.PURCHASE,
 	val locations: List<StorageLocation> = emptyList(),
 	val products: List<Product> = emptyList(),
+	val stock: List<LocationStockRow> = emptyList(),
 	val selectedLocationId: Long? = null,
 	val lines: List<PurchaseSaleLineUi> = emptyList(),
 	val inventoryLines: List<InventoryLineUi> = emptyList(),
@@ -67,6 +71,7 @@ class DocumentFormViewModel @Inject constructor(
 	savedStateHandle: SavedStateHandle,
 	observeLocations: ObserveLocationsUseCase,
 	observeProducts: ObserveProductsUseCase,
+	observeLocationStock: ObserveLocationStockUseCase,
 	private val observeInventoryPrefill: ObserveInventoryPrefillUseCase,
 	private val createDraft: CreateDraftUseCase
 ) : ViewModel() {
@@ -89,6 +94,11 @@ class DocumentFormViewModel @Inject constructor(
 		viewModelScope.launch {
 			observeProducts().collect { products ->
 				_state.update { it.copy(products = products) }
+			}
+		}
+		viewModelScope.launch {
+			observeLocationStock().collect { stock ->
+				_state.update { it.copy(stock = stock) }
 			}
 		}
 		viewModelScope.launch {
@@ -116,13 +126,27 @@ class DocumentFormViewModel @Inject constructor(
 	}
 
 	fun selectLocation(locationId: Long) {
+		val location = _state.value.locations.firstOrNull { it.id == locationId } ?: return
+		if (location.parentId == null) {
+			_events.tryEmit(DocumentFormEvent.Message("Операции проводятся только по подскладам"))
+			return
+		}
 		_state.update { it.copy(selectedLocationId = locationId, error = null) }
 	}
 
 	fun addLine(productId: Long) {
-		val product = _state.value.products.firstOrNull { it.id == productId } ?: return
-		if (_state.value.lines.any { it.productId == productId }) {
+		val current = _state.value
+		val product = current.products.firstOrNull { it.id == productId } ?: return
+		if (current.lines.any { it.productId == productId }) {
 			_events.tryEmit(DocumentFormEvent.Message("Товар уже добавлен"))
+			return
+		}
+		if (
+			current.type == DocumentType.SALE &&
+			current.selectedLocationId != null &&
+			stockAtLocation(current.stock, current.selectedLocationId, productId) <= 0
+		) {
+			_events.tryEmit(DocumentFormEvent.Message("На выбранном складе нет остатка товара"))
 			return
 		}
 		_state.update {
@@ -218,6 +242,21 @@ class DocumentFormViewModel @Inject constructor(
 			if (price == null || price < 0) {
 				_state.update { it.copy(error = "Некорректная цена: ${line.productName}") }
 				return null
+			}
+			if (type == DocumentType.SALE) {
+				val available = stockAtLocation(
+					stock = current.stock,
+					locationId = current.selectedLocationId,
+					productId = line.productId
+				)
+				if (quantity > available) {
+					_state.update {
+						it.copy(
+							error = "Недостаточно товара <${line.productName}>: доступно $available шт."
+						)
+					}
+					return null
+				}
 			}
 			result += DraftLineInput(
 				productId = line.productId,

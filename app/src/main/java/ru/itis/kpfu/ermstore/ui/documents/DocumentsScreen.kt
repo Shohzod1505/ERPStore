@@ -11,7 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,12 +45,21 @@ fun DocumentsScreen(
 		floatingActionButton = { AddButton(onClick = { onAdd(state.type) }) }
 	) { padding ->
 		Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-			PrimaryTabRow(selectedTabIndex = types.indexOf(state.type)) {
+			PrimaryScrollableTabRow(
+				selectedTabIndex = types.indexOf(state.type),
+				edgePadding = 0.dp
+			) {
 				types.forEach { type ->
 					Tab(
 						selected = state.type == type,
 						onClick = { viewModel.selectType(type) },
-						text = { Text(documentTypeLabel(type)) }
+						text = {
+							Text(
+								text = documentTypeLabel(type),
+								maxLines = 1,
+								softWrap = false
+							)
+						}
 					)
 				}
 			}

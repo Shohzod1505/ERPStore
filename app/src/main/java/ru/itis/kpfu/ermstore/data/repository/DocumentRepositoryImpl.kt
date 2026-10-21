@@ -17,7 +17,9 @@ import ru.itis.kpfu.ermstore.data.local.entity.StockMovementEntity
 import ru.itis.kpfu.ermstore.data.local.entity.StockMovementType
 import ru.itis.kpfu.ermstore.data.local.mapper.toDomain
 import ru.itis.kpfu.ermstore.data.local.model.DocumentLineRow
+import ru.itis.kpfu.ermstore.domain.calc.CashMath
 import ru.itis.kpfu.ermstore.domain.calc.MoneyMath
+import ru.itis.kpfu.ermstore.domain.calc.StockMath
 import ru.itis.kpfu.ermstore.domain.calc.WeightedAverageCost
 import ru.itis.kpfu.ermstore.domain.model.CashOperationType
 import ru.itis.kpfu.ermstore.domain.model.CreateDocumentInput
@@ -45,15 +47,45 @@ class DocumentRepositoryImpl @Inject constructor(
 
 	override suspend fun getDocument(id: Long): DocumentWithLines? {
 		val document = documentDao.getById(id) ?: return null
+		val rows = documentLineDao.getRows(id)
+		val lines = if (document.type == DocumentType.INVENTORY) {
+			val movements = if (document.status == DocumentStatus.POSTED) {
+				stockMovementDao.getForDocument(id).associateBy { it.productId }
+			} else {
+				emptyMap()
+			}
+			rows.mapNotNull { row ->
+				val beforeUnits = if (document.status == DocumentStatus.POSTED) {
+					StockMath.inventoryBeforeUnits(
+						countedUnits = row.quantityUnits,
+						deltaUnits = movements[row.productId]?.quantityDelta ?: 0
+					)
+				} else {
+					stockMovementDao.getStockAtLocation(row.productId, document.locationId)
+				}
+				val afterUnits = row.quantityUnits
+				if (beforeUnits == afterUnits) {
+					null
+				} else {
+					row.toDomain().copy(
+						beforeUnits = beforeUnits,
+						afterUnits = afterUnits
+					)
+				}
+			}
+		} else {
+			rows.map { it.toDomain() }
+		}
 		return DocumentWithLines(
 			document = document.toDomain(),
-			lines = documentLineDao.getRows(id).map { it.toDomain() }
+			lines = lines
 		)
 	}
 
 	override suspend fun createDraft(input: CreateDocumentInput): Long {
 		require(input.lines.isNotEmpty()) { "Document must contain at least one line" }
-		requireNotNull(locationDao.getById(input.locationId)) { "Location does not exist" }
+		val location = requireNotNull(locationDao.getById(input.locationId)) { "Location does not exist" }
+		require(location.parentId != null) { "Operations are allowed only for subwarehouses" }
 		input.lines.forEach { line ->
 			require(if (input.type == DocumentType.INVENTORY) line.quantityUnits >= 0 else line.quantityUnits > 0) {
 				"Quantity is invalid"
@@ -127,6 +159,10 @@ class DocumentRepositoryImpl @Inject constructor(
 			?: throw PostingException(PostingError.DocumentNotFound)
 		if (document.status != DocumentStatus.DRAFT) {
 			throw PostingException(PostingError.DocumentIsNotDraft)
+		}
+		val location = locationDao.getById(document.locationId)
+		if (location?.parentId == null) {
+			throw PostingException(PostingError.InvalidLocation)
 		}
 
 		val lines = documentLineDao.getRows(id)
@@ -279,6 +315,17 @@ class DocumentRepositoryImpl @Inject constructor(
 		label: String
 	) {
 		if (amountKopecks <= 0) return
+		if (type.cashSign < 0) {
+			val balance = cashTransactionDao.getBalance()
+			if (!CashMath.canSpend(balance, amountKopecks)) {
+				throw PostingException(
+					PostingError.InsufficientCash(
+						availableKopecks = balance,
+						requestedKopecks = amountKopecks
+					)
+				)
+			}
+		}
 		cashTransactionDao.insert(
 			CashTransactionEntity(
 				type = type,

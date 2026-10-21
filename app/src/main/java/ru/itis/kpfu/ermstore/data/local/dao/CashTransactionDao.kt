@@ -18,7 +18,7 @@ interface CashTransactionDao {
 		"""
 		SELECT COALESCE(SUM(
 			CASE
-				WHEN type = 'INCOME' OR type = 'DEBT_RECEIVED' THEN amountKopecks
+				WHEN type IN ('INCOME', 'DEBT_RECEIVED', 'DEBT_REPAID_TO_US') THEN amountKopecks
 				ELSE -amountKopecks
 			END
 		), 0)
@@ -26,6 +26,19 @@ interface CashTransactionDao {
 		"""
 	)
 	fun observeBalance(): Flow<Long>
+
+	@Query(
+		"""
+		SELECT COALESCE(SUM(
+			CASE
+				WHEN type IN ('INCOME', 'DEBT_RECEIVED', 'DEBT_REPAID_TO_US') THEN amountKopecks
+				ELSE -amountKopecks
+			END
+		), 0)
+		FROM cash_transactions
+		"""
+	)
+	suspend fun getBalance(): Long
 
 	@Query(
 		"""
@@ -47,7 +60,7 @@ interface CashTransactionDao {
 		"""
 		SELECT COALESCE(SUM(
 			CASE
-				WHEN type = 'INCOME' OR type = 'DEBT_RECEIVED' THEN amountKopecks
+				WHEN type IN ('INCOME', 'DEBT_RECEIVED', 'DEBT_REPAID_TO_US') THEN amountKopecks
 				ELSE -amountKopecks
 			END
 		), 0)

@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,7 +45,13 @@ fun ScreenScaffold(
 	Scaffold(
 		topBar = {
 			TopAppBar(
-				title = { Text(title) },
+				title = {
+					Text(
+						text = title,
+						maxLines = 1,
+						overflow = TextOverflow.Ellipsis
+					)
+				},
 				navigationIcon = {
 					if (onBack != null) {
 						TextButton(onClick = onBack) {

@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
@@ -29,6 +31,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ru.itis.kpfu.ermstore.domain.calc.CashMath
+import ru.itis.kpfu.ermstore.domain.model.CashFilter
 import ru.itis.kpfu.ermstore.domain.model.CashOperationType
 import ru.itis.kpfu.ermstore.domain.model.CashTransaction
 import ru.itis.kpfu.ermstore.ui.components.AddButton
@@ -36,6 +39,7 @@ import ru.itis.kpfu.ermstore.ui.components.EmptyState
 import ru.itis.kpfu.ermstore.ui.components.LoadingState
 import ru.itis.kpfu.ermstore.ui.components.ScreenScaffold
 import ru.itis.kpfu.ermstore.ui.components.SelectionField
+import ru.itis.kpfu.ermstore.ui.util.cashFilterLabel
 import ru.itis.kpfu.ermstore.ui.util.cashTypeLabel
 import ru.itis.kpfu.ermstore.ui.util.formatDate
 import ru.itis.kpfu.ermstore.ui.util.formatMoney
@@ -67,11 +71,28 @@ fun CashScreen(viewModel: CashViewModel = hiltViewModel()) {
 					BalanceCard(state.balanceKopecks)
 				}
 				item {
+					LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+						items(CashFilter.entries) { filter ->
+							FilterChip(
+								selected = state.filter == filter,
+								onClick = { viewModel.setFilter(filter) },
+								label = { Text(cashFilterLabel(filter)) }
+							)
+						}
+					}
+				}
+				item {
 					Text("Операции", style = MaterialTheme.typography.titleMedium)
 				}
 				if (state.transactions.isEmpty()) {
 					item {
-						EmptyState(text = "Операций пока нет")
+						EmptyState(
+							text = if (state.filter == CashFilter.ALL) {
+								"Операций пока нет"
+							} else {
+								"Операций по фильтру нет"
+							}
+						)
 					}
 				} else {
 					items(state.transactions, key = { it.id }) { transaction ->

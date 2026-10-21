@@ -10,7 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,12 +39,21 @@ fun ReportsScreen(viewModel: ReportsViewModel = hiltViewModel()) {
 
 	ScreenScaffold(title = "Отчёты") { padding ->
 		Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-			PrimaryTabRow(selectedTabIndex = selectedTab) {
+			PrimaryScrollableTabRow(
+				selectedTabIndex = selectedTab,
+				edgePadding = 0.dp
+			) {
 				tabs.forEachIndexed { index, title ->
 					Tab(
 						selected = selectedTab == index,
 						onClick = { selectedTab = index },
-						text = { Text(title) }
+						text = {
+							Text(
+								text = title,
+								maxLines = 1,
+								softWrap = false
+							)
+						}
 					)
 				}
 			}
@@ -60,7 +69,7 @@ fun ReportsScreen(viewModel: ReportsViewModel = hiltViewModel()) {
 
 @Composable
 private fun StockReport(state: ReportsUiState) {
-	val byLocation = state.locationStock.groupBy { it.locationId }
+	val byWarehouse = state.locationStock.groupBy { it.parentName ?: it.locationName }
 	LazyColumn(
 		modifier = Modifier.fillMaxSize(),
 		contentPadding = PaddingValues(16.dp),
@@ -89,9 +98,9 @@ private fun StockReport(state: ReportsUiState) {
 		}
 
 		item {
-			Text("По местам хранения", style = MaterialTheme.typography.titleMedium)
+			Text("По складам", style = MaterialTheme.typography.titleMedium)
 		}
-		if (byLocation.isEmpty()) {
+		if (byWarehouse.isEmpty()) {
 			item {
 				Text(
 					text = "Остатков пока нет",
@@ -99,9 +108,9 @@ private fun StockReport(state: ReportsUiState) {
 				)
 			}
 		} else {
-			byLocation.forEach { (_, rows) ->
-				item(key = "location-${rows.first().locationId}") {
-					LocationStockCard(rows)
+			byWarehouse.forEach { (warehouseName, rows) ->
+				item(key = "warehouse-$warehouseName") {
+					WarehouseStockCard(warehouseName, rows)
 				}
 			}
 		}
@@ -109,15 +118,37 @@ private fun StockReport(state: ReportsUiState) {
 }
 
 @Composable
-private fun LocationStockCard(rows: List<LocationStockRow>) {
+private fun WarehouseStockCard(warehouseName: String, rows: List<LocationStockRow>) {
+	val totals = rows
+		.groupBy { it.productId }
+		.values
+		.map { productRows ->
+			val first = productRows.first()
+			first.copy(units = productRows.sumOf { it.units })
+		}
+		.sortedBy { it.productName }
 	Card(modifier = Modifier.fillMaxWidth()) {
 		Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-			Text(rows.first().locationName, style = MaterialTheme.typography.titleSmall)
-			rows.forEach { row ->
+			Text(warehouseName, style = MaterialTheme.typography.titleSmall)
+			totals.forEach { row ->
 				Text(
-					text = "${row.productName}: ${formatQuantity(row.units, row.unitsPerBlock)}",
+					text = "Итого ${row.productName}: ${formatQuantity(row.units, row.unitsPerBlock)}",
 					style = MaterialTheme.typography.bodySmall
 				)
+			}
+			rows.groupBy { it.locationId }.values.forEach { childRows ->
+				val child = childRows.first()
+				Text(
+					text = child.locationName,
+					style = MaterialTheme.typography.bodyMedium,
+					color = MaterialTheme.colorScheme.onSurfaceVariant
+				)
+				childRows.forEach { row ->
+					Text(
+						text = "${row.productName}: ${formatQuantity(row.units, row.unitsPerBlock)}",
+						style = MaterialTheme.typography.bodySmall
+					)
+				}
 			}
 		}
 	}

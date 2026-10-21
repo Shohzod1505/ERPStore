@@ -51,11 +51,19 @@ class DemoDataSeeder @Inject constructor(
 		val energyId = createProduct("Энергетик Adrenaline Rush 0.449 л", 24)
 
 		val mainWarehouseId = createLocation("Основной склад", null)
+		val backroomWarehouseId = createLocation("Подсобка", null)
+		val mainLocationId = observeLocations().first()
+			.first { it.parentId == mainWarehouseId }
+			.id
+		val backroomLocationId = observeLocations().first()
+			.first { it.parentId == backroomWarehouseId }
+			.id
 		val fridgeId = createLocation("Холодильник", mainWarehouseId)
-		val backroomId = createLocation("Подсобка", null)
+
+		addCashOperation(CashOperationType.DEBT_RECEIVED, 3_000_000, "Стартовый капитал")
 
 		postPurchase(
-			locationId = mainWarehouseId,
+			locationId = mainLocationId,
 			lines = listOf(
 				DraftLineInput(colaId, 120, 4_500),
 				DraftLineInput(pepsiId, 60, 4_000),
@@ -71,7 +79,7 @@ class DemoDataSeeder @Inject constructor(
 			)
 		)
 		postPurchase(
-			locationId = backroomId,
+			locationId = backroomLocationId,
 			lines = listOf(
 				DraftLineInput(pepsiId, 48, 4_200),
 				DraftLineInput(juiceId, 12, 8_200)
@@ -79,7 +87,7 @@ class DemoDataSeeder @Inject constructor(
 		)
 
 		postSale(
-			locationId = mainWarehouseId,
+			locationId = mainLocationId,
 			lines = listOf(
 				DraftLineInput(colaId, 24, 7_000),
 				DraftLineInput(waterId, 12, 4_500)
@@ -95,7 +103,7 @@ class DemoDataSeeder @Inject constructor(
 		)
 
 		postInventory(
-			locationId = mainWarehouseId,
+			locationId = mainLocationId,
 			countedUnits = mapOf(
 				colaId to 100L,
 				pepsiId to 60L,
@@ -105,7 +113,6 @@ class DemoDataSeeder @Inject constructor(
 			)
 		)
 
-		addCashOperation(CashOperationType.DEBT_RECEIVED, 3_000_000, "Заём на закупку")
 		addCashOperation(CashOperationType.INCOME, 50_000, "Прочий доход")
 		addCashOperation(CashOperationType.EXPENSE, 35_000, "Доставка")
 		addCashOperation(CashOperationType.DEBT_GIVEN, 100_000, "Займ сотруднику")

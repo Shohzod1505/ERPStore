@@ -7,4 +7,7 @@ object CashMath {
 		require(amountKopecks >= 0) { "Amount must not be negative" }
 		return type.cashSign * amountKopecks
 	}
+
+	fun canSpend(balanceKopecks: Long, amountKopecks: Long): Boolean =
+		amountKopecks <= balanceKopecks
 }

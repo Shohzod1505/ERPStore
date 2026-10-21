@@ -27,6 +27,11 @@ fun formatQuantity(units: Long, unitsPerBlock: Int): String {
 	return "$units шт. · $blocks бл. + $remainder шт."
 }
 
+fun formatSignedUnits(units: Long): String = when {
+	units > 0 -> "+$units шт."
+	else -> "$units шт."
+}
+
 fun parseMoneyToKopecks(input: String): Long? {
 	val normalized = input.trim().replace(',', '.')
 	if (normalized.isEmpty()) return null

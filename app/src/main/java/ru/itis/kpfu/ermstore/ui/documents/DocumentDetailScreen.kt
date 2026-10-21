@@ -105,6 +105,18 @@ fun DocumentDetailScreen(
 					Text("Строки документа", style = MaterialTheme.typography.titleMedium)
 				}
 
+				if (
+					documentWithLines.document.type == DocumentType.INVENTORY &&
+					documentWithLines.lines.isEmpty()
+				) {
+					item {
+						Text(
+							text = "Изменений нет.",
+							color = MaterialTheme.colorScheme.onSurfaceVariant
+						)
+					}
+				}
+
 				items(documentWithLines.lines, key = { it.id }) { line ->
 					DocumentLineCard(
 						line = line,
@@ -185,6 +197,14 @@ private fun DocumentLineCard(line: DocumentLine, type: DocumentType, status: Doc
 					)
 				}
 				DocumentType.INVENTORY -> {
+					val before = line.beforeUnits
+					val after = line.afterUnits
+					if (before != null && after != null) {
+						Text(
+							text = "Было: $before шт. · Стало: $after шт.",
+							style = MaterialTheme.typography.bodySmall
+						)
+					}
 					Text(
 						text = if (status == DocumentStatus.DRAFT) {
 							"Корректировка появится после проведения"

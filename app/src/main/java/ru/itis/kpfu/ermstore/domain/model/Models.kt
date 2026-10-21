@@ -12,6 +12,8 @@ enum class DocumentStatus {
 	CANCELLED
 }
 
+const val DEFAULT_SUBWAREHOUSE_NAME = "Основное хранилище"
+
 enum class CashOperationType(
 	val cashSign: Int,
 	val isLoan: Boolean
@@ -19,7 +21,36 @@ enum class CashOperationType(
 	INCOME(1, false),
 	EXPENSE(-1, false),
 	DEBT_GIVEN(-1, true),
-	DEBT_RECEIVED(1, true)
+	DEBT_RECEIVED(1, true),
+	DEBT_REPAID_TO_US(1, true),
+	DEBT_REPAID_BY_US(-1, true)
+}
+
+enum class CashFilter {
+	ALL,
+	INCOME,
+	EXPENSE,
+	DEBT;
+
+	fun matches(type: CashOperationType): Boolean = when (this) {
+		ALL -> true
+		INCOME -> !type.isLoan && type.cashSign > 0
+		EXPENSE -> !type.isLoan && type.cashSign < 0
+		DEBT -> type.isLoan
+	}
+}
+
+sealed interface CashOperationError {
+	data object InvalidAmount : CashOperationError
+	data class InsufficientFunds(
+		val availableKopecks: Long,
+		val requestedKopecks: Long
+	) : CashOperationError
+}
+
+sealed interface CashOperationResult {
+	data object Success : CashOperationResult
+	data class Failure(val error: CashOperationError) : CashOperationResult
 }
 
 data class Product(
@@ -52,7 +83,9 @@ data class DocumentLine(
 	val productName: String,
 	val quantityUnits: Long,
 	val priceKopecks: Long,
-	val costKopecks: Long
+	val costKopecks: Long,
+	val beforeUnits: Long? = null,
+	val afterUnits: Long? = null
 )
 
 data class DocumentWithLines(

@@ -7,14 +7,17 @@ import ru.itis.kpfu.ermstore.data.local.entity.ProductEntity
 import ru.itis.kpfu.ermstore.data.local.model.DocumentLineRow
 import ru.itis.kpfu.ermstore.data.local.model.InventoryPrefillRowDb
 import ru.itis.kpfu.ermstore.data.local.model.LocationStockRowDb
+import ru.itis.kpfu.ermstore.data.local.model.ProductMovementRowDb
 import ru.itis.kpfu.ermstore.data.local.model.ProductStockRow
 import ru.itis.kpfu.ermstore.data.local.model.SalesReportRowDb
 import ru.itis.kpfu.ermstore.domain.model.CashTransaction
 import ru.itis.kpfu.ermstore.domain.model.Document
 import ru.itis.kpfu.ermstore.domain.model.DocumentLine
+import ru.itis.kpfu.ermstore.domain.model.DocumentType
 import ru.itis.kpfu.ermstore.domain.model.InventoryPrefillRow
 import ru.itis.kpfu.ermstore.domain.model.LocationStockRow
 import ru.itis.kpfu.ermstore.domain.model.Product
+import ru.itis.kpfu.ermstore.domain.model.ProductMovement
 import ru.itis.kpfu.ermstore.domain.model.ProductStock
 import ru.itis.kpfu.ermstore.domain.model.SalesReportRow
 import ru.itis.kpfu.ermstore.domain.model.StorageLocation
@@ -72,10 +75,23 @@ fun LocationStockRowDb.toDomain(): LocationStockRow = LocationStockRow(
 	locationId = locationId,
 	locationName = locationName,
 	parentId = parentId,
+	parentName = parentName,
 	productId = productId,
 	productName = productName,
 	unitsPerBlock = unitsPerBlock,
 	units = units
+)
+
+fun ProductMovementRowDb.toDomain(): ProductMovement = ProductMovement(
+	id = id,
+	dateMillis = dateMillis,
+	quantityDelta = quantityDelta,
+	unitCostKopecks = unitCostKopecks,
+	documentId = documentId,
+	documentNumber = documentNumber,
+	documentType = DocumentType.valueOf(documentType),
+	locationName = locationName,
+	parentName = parentName
 )
 
 fun SalesReportRowDb.toDomain(): SalesReportRow = SalesReportRow(

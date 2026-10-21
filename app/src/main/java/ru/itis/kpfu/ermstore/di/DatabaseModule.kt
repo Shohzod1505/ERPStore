@@ -26,7 +26,9 @@ object DatabaseModule {
 			context,
 			ErmStoreDatabase::class.java,
 			"ermstore.db"
-		).build()
+		)
+			.fallbackToDestructiveMigration(dropAllTables = true)
+			.build()
 
 	@Provides
 	fun provideProductDao(database: ErmStoreDatabase): ProductDao = database.productDao()

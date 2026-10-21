@@ -1,15 +1,19 @@
 package ru.itis.kpfu.ermstore.data.repository
 
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import ru.itis.kpfu.ermstore.data.local.ErmStoreDatabase
 import ru.itis.kpfu.ermstore.data.local.dao.LocationDao
 import ru.itis.kpfu.ermstore.data.local.entity.LocationEntity
 import ru.itis.kpfu.ermstore.data.local.mapper.toDomain
+import ru.itis.kpfu.ermstore.domain.model.DEFAULT_SUBWAREHOUSE_NAME
 import ru.itis.kpfu.ermstore.domain.model.StorageLocation
 import ru.itis.kpfu.ermstore.domain.repository.LocationRepository
 import javax.inject.Inject
 
 class LocationRepositoryImpl @Inject constructor(
+	private val database: ErmStoreDatabase,
 	private val locationDao: LocationDao
 ) : LocationRepository {
 	override fun observeLocations(): Flow<List<StorageLocation>> =
@@ -25,12 +29,28 @@ class LocationRepositoryImpl @Inject constructor(
 			require(parent.parentId == null) {
 				"Only one level of subwarehouses is supported"
 			}
-		}
-		return locationDao.insert(
-			LocationEntity(
-				name = trimmedName,
-				parentId = parentId
+			return locationDao.insert(
+				LocationEntity(
+					name = trimmedName,
+					parentId = parentId
+				)
 			)
-		)
+		}
+
+		return database.withTransaction {
+			val warehouseId = locationDao.insert(
+				LocationEntity(
+					name = trimmedName,
+					parentId = null
+				)
+			)
+			locationDao.insert(
+				LocationEntity(
+					name = DEFAULT_SUBWAREHOUSE_NAME,
+					parentId = warehouseId
+				)
+			)
+			warehouseId
+		}
 	}
 }
